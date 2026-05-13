@@ -28,16 +28,14 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: 8.9
+      - name: Make gradlew executable
+        run: chmod +x gradlew
 
       - name: Build debug APK
-        run: gradle --stacktrace clean :app:assembleDebug
+        run: ./gradlew --stacktrace clean :app:assembleDebug
 
       - name: Run unit tests
-        run: gradle --stacktrace test
+        run: ./gradlew --stacktrace test
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
