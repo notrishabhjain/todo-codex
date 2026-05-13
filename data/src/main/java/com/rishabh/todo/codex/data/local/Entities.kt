@@ -100,7 +100,9 @@ data class AppSettingsEntity(
     val reminderMode: String,
     val reminderIntervalMinutes: Long,
     val emailReportHour: Int,
+    val dailyReportEnabled: Boolean,
     val biometricLockEnabled: Boolean,
     val scheduledExportEnabled: Boolean,
     val scheduledExportPath: String?,
+    val scheduledExportFormat: String,
 )

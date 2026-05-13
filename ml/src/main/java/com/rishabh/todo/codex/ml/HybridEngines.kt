@@ -195,4 +195,10 @@ object MlModule {
     @Provides
     @Singleton
     fun provideTranscriptEngine(): TranscriptExtractionEngine = TranscriptExtractionEngineImpl()
+
+    @Provides
+    @Singleton
+    fun provideLearningEngine(learningRepository: LearningRepository): LearningEngine {
+        return LocalLearningEngine(learningRepository)
+    }
 }

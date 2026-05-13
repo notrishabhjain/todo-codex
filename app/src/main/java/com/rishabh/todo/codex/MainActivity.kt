@@ -94,23 +94,51 @@ private fun TaskManagerApp(viewModel: MainViewModel) {
                 notifications = state.inbox,
                 onApprove = viewModel::approveNotification,
                 onIgnore = viewModel::ignoreNotification,
+                onAutoApproveContact = { viewModel.trustContactFromNotification(it, com.rishabh.todo.codex.domain.model.ContactTrust.VIP) },
+                onIgnoreContact = { viewModel.trustContactFromNotification(it, com.rishabh.todo.codex.domain.model.ContactTrust.IGNORE) },
             )
             AppTab.Tasks -> {
                 if (selectedTask == null) {
                     TasksScreen(tasks = state.tasks, onTaskClick = { selectedTask = it })
                 } else {
-                    TaskDetailScreen(task = selectedTask)
+                    TaskDetailScreen(
+                        task = selectedTask,
+                        onComplete = {
+                            viewModel.completeTask(it)
+                            selectedTask = null
+                        },
+                        onDelete = {
+                            viewModel.deleteTask(it)
+                            selectedTask = null
+                        },
+                        onArchive = {
+                            viewModel.archiveTask(it)
+                            selectedTask = null
+                        },
+                        onRaisePriority = {
+                            viewModel.raiseTaskPriority(it)
+                            selectedTask = it
+                        },
+                        onAddToCalendar = viewModel::addTaskToCalendar,
+                    )
                 }
             }
             AppTab.Analytics -> AnalyticsScreen(snapshot = state.analytics)
             AppTab.Settings -> SettingsScreen(
                 settings = state.settings,
+                contacts = state.contacts,
                 onOpenNotificationAccess = {
                     context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                 },
                 onOpenBatterySettings = {
                     context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
                 },
+                onReminderModeChange = viewModel::updateReminderMode,
+                onReminderIntervalChange = viewModel::updateReminderInterval,
+                onDailyReportToggle = viewModel::toggleDailyReport,
+                onExportToggle = viewModel::toggleScheduledExport,
+                onExportFormatChange = viewModel::updateExportFormat,
+                onSetContactTrust = viewModel::setContactTrust,
             )
             AppTab.Transcripts -> TranscriptScreen(
                 transcript = state.transcript,

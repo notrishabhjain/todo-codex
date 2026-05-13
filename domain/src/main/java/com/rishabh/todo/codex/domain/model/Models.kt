@@ -169,7 +169,9 @@ data class AppSettings(
     val reminderMode: ReminderMode = ReminderMode.BALANCED,
     val reminderIntervalMinutes: Long = 30L,
     val emailReportHour: Int = 20,
+    val dailyReportEnabled: Boolean = true,
     val biometricLockEnabled: Boolean = false,
     val scheduledExportEnabled: Boolean = false,
     val scheduledExportPath: String? = null,
+    val scheduledExportFormat: String = "json",
 )

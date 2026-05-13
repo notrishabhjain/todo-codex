@@ -128,16 +128,20 @@ fun AppSettingsEntity.toDomain() = AppSettings(
     reminderMode = com.rishabh.todo.codex.domain.model.ReminderMode.valueOf(reminderMode),
     reminderIntervalMinutes = reminderIntervalMinutes,
     emailReportHour = emailReportHour,
+    dailyReportEnabled = dailyReportEnabled,
     biometricLockEnabled = biometricLockEnabled,
     scheduledExportEnabled = scheduledExportEnabled,
     scheduledExportPath = scheduledExportPath,
+    scheduledExportFormat = scheduledExportFormat,
 )
 
 fun AppSettings.toEntity() = AppSettingsEntity(
     reminderMode = reminderMode.name,
     reminderIntervalMinutes = reminderIntervalMinutes,
     emailReportHour = emailReportHour,
+    dailyReportEnabled = dailyReportEnabled,
     biometricLockEnabled = biometricLockEnabled,
     scheduledExportEnabled = scheduledExportEnabled,
     scheduledExportPath = scheduledExportPath,
+    scheduledExportFormat = scheduledExportFormat,
 )

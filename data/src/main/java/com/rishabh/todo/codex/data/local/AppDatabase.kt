@@ -15,7 +15,7 @@ import androidx.room.RoomDatabase
         ExportJobEntity::class,
         AppSettingsEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {

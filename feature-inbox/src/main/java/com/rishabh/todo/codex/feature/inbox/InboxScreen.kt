@@ -22,6 +22,8 @@ fun InboxScreen(
     notifications: List<NotificationRecord>,
     onApprove: (NotificationRecord) -> Unit,
     onIgnore: (NotificationRecord) -> Unit,
+    onAutoApproveContact: (NotificationRecord) -> Unit,
+    onIgnoreContact: (NotificationRecord) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -35,6 +37,10 @@ fun InboxScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { onApprove(record) }) { Text("Create Task") }
                         Button(onClick = { onIgnore(record) }) { Text("Ignore") }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onAutoApproveContact(record) }) { Text("Always Auto") }
+                        Button(onClick = { onIgnoreContact(record) }) { Text("Ignore Contact") }
                     }
                 }
             }
