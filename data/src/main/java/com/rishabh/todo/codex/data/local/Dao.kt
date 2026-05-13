@@ -71,6 +71,21 @@ interface LearningDao {
 }
 
 @Dao
+interface KeywordRuleDao {
+    @Query("SELECT * FROM keyword_rules ORDER BY category, phrase")
+    fun observeRules(): Flow<List<KeywordRuleEntity>>
+
+    @Query("SELECT * FROM keyword_rules WHERE enabled = 1 ORDER BY weight DESC")
+    suspend fun getEnabledRules(): List<KeywordRuleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: KeywordRuleEntity)
+
+    @Query("SELECT COUNT(*) FROM keyword_rules")
+    suspend fun count(): Int
+}
+
+@Dao
 interface AnalyticsDao {
     @Query("SELECT * FROM analytics_snapshots WHERE singletonId = 1")
     fun observeSnapshot(): Flow<AnalyticsSnapshotEntity?>

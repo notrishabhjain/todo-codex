@@ -23,6 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
     abstract fun contactDao(): ContactDao
     abstract fun learningDao(): LearningDao
+    abstract fun keywordRuleDao(): KeywordRuleDao
     abstract fun analyticsDao(): AnalyticsDao
     abstract fun settingsDao(): SettingsDao
 }

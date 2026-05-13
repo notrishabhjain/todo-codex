@@ -127,6 +127,7 @@ private fun TaskManagerApp(viewModel: MainViewModel) {
             AppTab.Settings -> SettingsScreen(
                 settings = state.settings,
                 contacts = state.contacts,
+                keywordRules = state.keywordRules,
                 onOpenNotificationAccess = {
                     context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                 },
@@ -139,6 +140,7 @@ private fun TaskManagerApp(viewModel: MainViewModel) {
                 onExportToggle = viewModel::toggleScheduledExport,
                 onExportFormatChange = viewModel::updateExportFormat,
                 onSetContactTrust = viewModel::setContactTrust,
+                onToggleKeywordRule = viewModel::toggleKeywordRule,
             )
             AppTab.Transcripts -> TranscriptScreen(
                 transcript = state.transcript,

@@ -3,6 +3,7 @@ package com.rishabh.todo.codex.data.di
 import android.content.Context
 import androidx.room.Room
 import com.rishabh.todo.codex.data.local.AppDatabase
+import com.rishabh.todo.codex.data.repository.KeywordRuleRepositoryImpl
 import com.rishabh.todo.codex.data.repository.AnalyticsRepositoryImpl
 import com.rishabh.todo.codex.data.repository.ContactPolicyRepositoryImpl
 import com.rishabh.todo.codex.data.repository.ExportRepositoryImpl
@@ -11,6 +12,7 @@ import com.rishabh.todo.codex.data.repository.NotificationRepositoryImpl
 import com.rishabh.todo.codex.data.repository.SettingsRepositoryImpl
 import com.rishabh.todo.codex.data.repository.TaskRepositoryImpl
 import com.rishabh.todo.codex.data.reminder.WorkManagerReminderScheduler
+import com.rishabh.todo.codex.domain.repository.KeywordRuleRepository
 import com.rishabh.todo.codex.domain.repository.AnalyticsRepository
 import com.rishabh.todo.codex.domain.repository.ContactPolicyRepository
 import com.rishabh.todo.codex.domain.repository.ExportRepository
@@ -44,6 +46,7 @@ object DatabaseModule {
     @Provides fun provideNotificationDao(db: AppDatabase) = db.notificationDao()
     @Provides fun provideContactDao(db: AppDatabase) = db.contactDao()
     @Provides fun provideLearningDao(db: AppDatabase) = db.learningDao()
+    @Provides fun provideKeywordRuleDao(db: AppDatabase) = db.keywordRuleDao()
     @Provides fun provideAnalyticsDao(db: AppDatabase) = db.analyticsDao()
     @Provides fun provideSettingsDao(db: AppDatabase) = db.settingsDao()
 }
@@ -58,5 +61,6 @@ abstract class RepositoryModule {
     @Binds abstract fun bindExportRepository(impl: ExportRepositoryImpl): ExportRepository
     @Binds abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
     @Binds abstract fun bindLearningRepository(impl: LearningRepositoryImpl): LearningRepository
+    @Binds abstract fun bindKeywordRuleRepository(impl: KeywordRuleRepositoryImpl): KeywordRuleRepository
     @Binds abstract fun bindReminderScheduler(impl: WorkManagerReminderScheduler): ReminderScheduler
 }

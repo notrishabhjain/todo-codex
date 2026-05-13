@@ -4,6 +4,7 @@ import com.rishabh.todo.codex.domain.model.AnalyticsSnapshot
 import com.rishabh.todo.codex.domain.model.AppSettings
 import com.rishabh.todo.codex.domain.model.ContactProfile
 import com.rishabh.todo.codex.domain.model.ContactTrust
+import com.rishabh.todo.codex.domain.model.KeywordRule
 import com.rishabh.todo.codex.domain.model.LearningEvent
 import com.rishabh.todo.codex.domain.model.LearningEventType
 import com.rishabh.todo.codex.domain.model.NotificationRecord
@@ -94,6 +95,24 @@ fun ContactProfile.toEntity() = ContactEntity(
     displayName = displayName,
     trust = trust.name,
     learnedWeight = learnedWeight,
+)
+
+fun KeywordRuleEntity.toDomain() = KeywordRule(
+    id = id,
+    phrase = phrase,
+    category = category,
+    weight = weight,
+    languageHint = languageHint,
+    enabled = enabled,
+)
+
+fun KeywordRule.toEntity() = KeywordRuleEntity(
+    id = id,
+    phrase = phrase,
+    category = category,
+    weight = weight,
+    languageHint = languageHint,
+    enabled = enabled,
 )
 
 fun LearningEvent.toEntity() = LearningEventEntity(

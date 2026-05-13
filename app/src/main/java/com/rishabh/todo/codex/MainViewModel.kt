@@ -4,6 +4,7 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rishabh.todo.codex.data.background.AutomationScheduler
+import com.rishabh.todo.codex.data.bootstrap.KeywordRuleSeeder
 import com.rishabh.todo.codex.data.integration.CalendarIntegrationManager
 import com.rishabh.todo.codex.data.integration.DailyReportEmailBuilder
 import com.rishabh.todo.codex.domain.engine.ExtractionEngine
@@ -14,8 +15,9 @@ import com.rishabh.todo.codex.domain.model.AnalyticsSnapshot
 import com.rishabh.todo.codex.domain.model.AppSettings
 import com.rishabh.todo.codex.domain.model.ContactProfile
 import com.rishabh.todo.codex.domain.model.ContactTrust
-import com.rishabh.todo.codex.domain.model.ExtractionResult
 import com.rishabh.todo.codex.domain.model.ExtractionReason
+import com.rishabh.todo.codex.domain.model.ExtractionResult
+import com.rishabh.todo.codex.domain.model.KeywordRule
 import com.rishabh.todo.codex.domain.model.LearningEvent
 import com.rishabh.todo.codex.domain.model.LearningEventType
 import com.rishabh.todo.codex.domain.model.NotificationRecord
@@ -30,6 +32,7 @@ import com.rishabh.todo.codex.domain.model.TranscriptCandidateTask
 import com.rishabh.todo.codex.domain.repository.AnalyticsRepository
 import com.rishabh.todo.codex.domain.repository.ContactPolicyRepository
 import com.rishabh.todo.codex.domain.repository.ExportRepository
+import com.rishabh.todo.codex.domain.repository.KeywordRuleRepository
 import com.rishabh.todo.codex.domain.repository.NotificationRepository
 import com.rishabh.todo.codex.domain.repository.SettingsRepository
 import com.rishabh.todo.codex.domain.repository.TaskRepository
@@ -46,6 +49,7 @@ data class MainUiState(
     val tasks: List<Task> = emptyList(),
     val inbox: List<NotificationRecord> = emptyList(),
     val contacts: List<ContactProfile> = emptyList(),
+    val keywordRules: List<KeywordRule> = emptyList(),
     val analytics: AnalyticsSnapshot = AnalyticsSnapshot(0, 0, 0, 0, 0f, 0, "None"),
     val settings: AppSettings = AppSettings(),
     val transcript: String = "",
@@ -61,12 +65,14 @@ class MainViewModel @Inject constructor(
     private val analyticsRepository: AnalyticsRepository,
     private val settingsRepository: SettingsRepository,
     private val exportRepository: ExportRepository,
+    private val keywordRuleRepository: KeywordRuleRepository,
     private val extractionEngine: ExtractionEngine,
     private val transcriptExtractionEngine: TranscriptExtractionEngine,
     private val learningEngine: LearningEngine,
     private val reminderScheduler: ReminderScheduler,
     private val automationScheduler: AutomationScheduler,
     private val calendarIntegrationManager: CalendarIntegrationManager,
+    private val keywordRuleSeeder: KeywordRuleSeeder,
     private val dailyReportEmailBuilder: DailyReportEmailBuilder,
 ) : ViewModel() {
     private val transcript = MutableStateFlow("")
@@ -77,11 +83,12 @@ class MainViewModel @Inject constructor(
         val tasks: List<Task>,
         val inbox: List<NotificationRecord>,
         val contacts: List<ContactProfile>,
+        val keywordRules: List<KeywordRule>,
         val analytics: AnalyticsSnapshot,
         val settings: AppSettings,
     )
 
-    val state = combine(
+    private val baseState = combine(
         combine(
             combine(
                 combine(
@@ -89,26 +96,40 @@ class MainViewModel @Inject constructor(
                         taskRepository.observeTasks(),
                         notificationRepository.observeInboxCandidates(),
                     ) { tasks: List<Task>, inbox: List<NotificationRecord> ->
-                        tasks to inbox
+                        Pair(tasks, inbox)
                     },
                     contactPolicyRepository.observeContacts(),
-                ) { taskInboxPair: Pair<List<Task>, List<NotificationRecord>>, contacts: List<ContactProfile> ->
-                    Triple(taskInboxPair.first, taskInboxPair.second, contacts)
+                ) { taskInbox: Pair<List<Task>, List<NotificationRecord>>, contacts: List<ContactProfile> ->
+                    Triple(taskInbox.first, taskInbox.second, contacts)
                 },
-                analyticsRepository.observeSnapshot(),
-            ) { taskInboxContacts: Triple<List<Task>, List<NotificationRecord>, List<ContactProfile>>, analytics: AnalyticsSnapshot ->
-                Quadruple(taskInboxContacts.first, taskInboxContacts.second, taskInboxContacts.third, analytics)
+                keywordRuleRepository.observeRules(),
+            ) { taskInboxContacts: Triple<List<Task>, List<NotificationRecord>, List<ContactProfile>>, rules: List<KeywordRule> ->
+                Quadruple(taskInboxContacts.first, taskInboxContacts.second, taskInboxContacts.third, rules)
             },
-            settingsRepository.observeSettings(),
-        ) { taskInboxAnalytics: Quadruple<List<Task>, List<NotificationRecord>, List<ContactProfile>, AnalyticsSnapshot>, settings: AppSettings ->
-            BaseStateBundle(
-                tasks = taskInboxAnalytics.first,
-                inbox = taskInboxAnalytics.second,
-                contacts = taskInboxAnalytics.third,
-                analytics = taskInboxAnalytics.fourth,
-                settings = settings,
+            analyticsRepository.observeSnapshot(),
+        ) { taskInboxContactsRules: Quadruple<List<Task>, List<NotificationRecord>, List<ContactProfile>, List<KeywordRule>>, analytics: AnalyticsSnapshot ->
+            Quintuple(
+                taskInboxContactsRules.first,
+                taskInboxContactsRules.second,
+                taskInboxContactsRules.third,
+                taskInboxContactsRules.fourth,
+                analytics,
             )
         },
+        settingsRepository.observeSettings(),
+    ) { bundle: Quintuple<List<Task>, List<NotificationRecord>, List<ContactProfile>, List<KeywordRule>, AnalyticsSnapshot>, settings: AppSettings ->
+        BaseStateBundle(
+            tasks = bundle.first,
+            inbox = bundle.second,
+            contacts = bundle.third,
+            keywordRules = bundle.fourth,
+            analytics = bundle.fifth,
+            settings = settings,
+        )
+    }
+
+    val state = combine(
+        baseState,
         transcript,
         transcriptCandidates,
     ) { bundle: BaseStateBundle, transcriptText: String, candidates: List<TranscriptCandidateTask> ->
@@ -116,6 +137,7 @@ class MainViewModel @Inject constructor(
             tasks = bundle.tasks,
             inbox = bundle.inbox,
             contacts = bundle.contacts,
+            keywordRules = bundle.keywordRules,
             analytics = bundle.analytics,
             settings = bundle.settings,
             transcript = transcriptText,
@@ -126,6 +148,7 @@ class MainViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            keywordRuleSeeder.seedIfEmpty()
             analyticsRepository.refresh()
             scheduleAutomation()
         }
@@ -136,14 +159,7 @@ class MainViewModel @Inject constructor(
             val extraction = extractionEngine.extract(record)
             taskRepository.upsert(createTask(record, extraction))
             notificationRepository.updateDecision(record.id, "APPROVED")
-            learningEngine.record(
-                LearningEvent(
-                    taskId = null,
-                    notificationId = record.id,
-                    eventType = LearningEventType.APPROVED,
-                    payload = record.rawText,
-                ),
-            )
+            recordLearning(record.id, null, LearningEventType.APPROVED, record.rawText)
             analyticsRepository.refresh()
             rescheduleReminders()
         }
@@ -152,14 +168,7 @@ class MainViewModel @Inject constructor(
     fun ignoreNotification(record: NotificationRecord) {
         viewModelScope.launch {
             notificationRepository.updateDecision(record.id, "IGNORED")
-            learningEngine.record(
-                LearningEvent(
-                    taskId = null,
-                    notificationId = record.id,
-                    eventType = LearningEventType.IGNORED,
-                    payload = record.rawText,
-                ),
-            )
+            recordLearning(record.id, null, LearningEventType.IGNORED, record.rawText)
             analyticsRepository.refresh()
         }
     }
@@ -182,14 +191,7 @@ class MainViewModel @Inject constructor(
                 val extraction = extractionEngine.extract(record)
                 taskRepository.upsert(createTask(record, extraction))
                 notificationRepository.updateDecision(record.id, "APPROVED")
-                learningEngine.record(
-                    LearningEvent(
-                        taskId = null,
-                        notificationId = record.id,
-                        eventType = LearningEventType.APPROVED,
-                        payload = record.rawText,
-                    ),
-                )
+                recordLearning(record.id, null, LearningEventType.APPROVED, record.rawText)
                 analyticsRepository.refresh()
                 rescheduleReminders()
             }
@@ -233,7 +235,14 @@ class MainViewModel @Inject constructor(
                         sourceType = SourceType.GENERIC,
                         reason = ExtractionReason(modelScore = candidate.confidence),
                     )
-                    taskRepository.upsert(createTask(pseudoNotification, extraction, transcriptDerived = true, ownerLabel = candidate.owner))
+                    taskRepository.upsert(
+                        createTask(
+                            pseudoNotification,
+                            extraction,
+                            transcriptDerived = true,
+                            ownerLabel = candidate.owner,
+                        ),
+                    )
                 }
             analyticsRepository.refresh()
             rescheduleReminders()
@@ -241,21 +250,17 @@ class MainViewModel @Inject constructor(
     }
 
     fun exportJson() {
-        viewModelScope.launch {
-            exportRepository.exportJson("offline-task-export.json")
-        }
+        viewModelScope.launch { exportRepository.exportJson("offline-task-export.json") }
     }
 
     fun exportCsv() {
-        viewModelScope.launch {
-            exportRepository.exportCsv("offline-task-export.csv")
-        }
+        viewModelScope.launch { exportRepository.exportCsv("offline-task-export.csv") }
     }
 
     fun completeTask(task: Task) {
         viewModelScope.launch {
             taskRepository.complete(task.id)
-            learningEngine.record(LearningEvent(taskId = task.id, notificationId = null, eventType = LearningEventType.COMPLETED, payload = task.title))
+            recordLearning(null, task.id, LearningEventType.COMPLETED, task.title)
             analyticsRepository.refresh()
             rescheduleReminders()
         }
@@ -288,7 +293,7 @@ class MainViewModel @Inject constructor(
                 },
             )
             taskRepository.update(updated)
-            learningEngine.record(LearningEvent(taskId = task.id, notificationId = null, eventType = LearningEventType.MANUALLY_EDITED, payload = updated.title))
+            recordLearning(null, task.id, LearningEventType.MANUALLY_EDITED, updated.title)
             analyticsRepository.refresh()
             rescheduleReminders()
         }
@@ -303,8 +308,7 @@ class MainViewModel @Inject constructor(
 
     fun updateReminderMode(mode: ReminderMode) {
         viewModelScope.launch {
-            val updated = state.value.settings.copy(reminderMode = mode)
-            settingsRepository.update(updated)
+            settingsRepository.update(state.value.settings.copy(reminderMode = mode))
             scheduleAutomation()
             rescheduleReminders()
         }
@@ -312,8 +316,7 @@ class MainViewModel @Inject constructor(
 
     fun updateReminderInterval(intervalMinutes: Long) {
         viewModelScope.launch {
-            val updated = state.value.settings.copy(reminderIntervalMinutes = intervalMinutes)
-            settingsRepository.update(updated)
+            settingsRepository.update(state.value.settings.copy(reminderIntervalMinutes = intervalMinutes))
             scheduleAutomation()
             rescheduleReminders()
         }
@@ -331,7 +334,8 @@ class MainViewModel @Inject constructor(
             settingsRepository.update(
                 state.value.settings.copy(
                     scheduledExportEnabled = enabled,
-                    scheduledExportPath = state.value.settings.scheduledExportPath ?: "scheduled-export.${state.value.settings.scheduledExportFormat}",
+                    scheduledExportPath = state.value.settings.scheduledExportPath
+                        ?: "scheduled-export.${state.value.settings.scheduledExportFormat}",
                 ),
             )
             scheduleAutomation()
@@ -353,6 +357,12 @@ class MainViewModel @Inject constructor(
     fun setContactTrust(contactProfile: ContactProfile, trust: ContactTrust) {
         viewModelScope.launch {
             contactPolicyRepository.upsert(contactProfile.copy(trust = trust))
+        }
+    }
+
+    fun toggleKeywordRule(rule: KeywordRule) {
+        viewModelScope.launch {
+            keywordRuleRepository.upsert(rule.copy(enabled = !rule.enabled))
         }
     }
 
@@ -389,6 +399,22 @@ class MainViewModel @Inject constructor(
     private suspend fun scheduleAutomation() {
         automationScheduler.schedule(state.value.settings)
     }
+
+    private suspend fun recordLearning(
+        notificationId: Long?,
+        taskId: Long?,
+        type: LearningEventType,
+        payload: String,
+    ) {
+        learningEngine.record(
+            LearningEvent(
+                taskId = taskId,
+                notificationId = notificationId,
+                eventType = type,
+                payload = payload,
+            ),
+        )
+    }
 }
 
 private data class Quadruple<A, B, C, D>(
@@ -396,4 +422,12 @@ private data class Quadruple<A, B, C, D>(
     val second: B,
     val third: C,
     val fourth: D,
+)
+
+private data class Quintuple<A, B, C, D, E>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+    val fifth: E,
 )

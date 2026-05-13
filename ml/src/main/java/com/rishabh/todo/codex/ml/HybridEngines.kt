@@ -17,6 +17,7 @@ import com.rishabh.todo.codex.domain.model.TaskCreationDecision
 import com.rishabh.todo.codex.domain.model.TaskPriority
 import com.rishabh.todo.codex.domain.model.TranscriptCandidateTask
 import com.rishabh.todo.codex.domain.repository.ContactPolicyRepository
+import com.rishabh.todo.codex.domain.repository.KeywordRuleRepository
 import com.rishabh.todo.codex.domain.repository.LearningRepository
 import com.rishabh.todo.codex.domain.repository.SettingsRepository
 import dagger.Module
@@ -35,11 +36,16 @@ import kotlinx.coroutines.flow.first
 
 class HybridExtractionEngine @Inject constructor(
     private val contactPolicyRepository: ContactPolicyRepository,
+    private val keywordRuleRepository: KeywordRuleRepository,
 ) : ExtractionEngine {
     override suspend fun extract(notification: NotificationRecord): ExtractionResult {
         val text = notification.rawText.lowercase()
-        val matchedActions = actionKeywords.filter { text.contains(it) }
-        val matchedUrgency = urgencyKeywords.filter { text.contains(it) }
+        val rules = keywordRuleRepository.getEnabledRules()
+        val actionTerms = rules.filter { it.category == "action" }.map { it.phrase } + actionKeywords
+        val urgencyTerms = rules.filter { it.category == "urgency" }.map { it.phrase } + urgencyKeywords
+        val timeTerms = rules.filter { it.category == "time" }.map { it.phrase } + timeKeywords
+        val matchedActions = actionTerms.distinct().filter { text.contains(it) }
+        val matchedUrgency = urgencyTerms.distinct().filter { text.contains(it) }
         val due = DueDateParser.parse(text)
         val contact = notification.sender?.let { contactPolicyRepository.getByName(it) }
         val senderWeight = when (contact?.trust ?: ContactTrust.NORMAL) {
@@ -72,7 +78,7 @@ class HybridExtractionEngine @Inject constructor(
             sourceType = notification.sourceType,
             reason = ExtractionReason(
                 matchedKeywords = matchedActions + matchedUrgency,
-                inferredDatePhrase = timeKeywords.firstOrNull { text.contains(it) },
+                inferredDatePhrase = timeTerms.distinct().firstOrNull { text.contains(it) },
                 modelScore = modelScore,
                 senderWeight = senderWeight,
                 threshold = 0.55f,
@@ -188,8 +194,11 @@ class ReminderSchedulerFacade @Inject constructor(
 object MlModule {
     @Provides
     @Singleton
-    fun provideExtractionEngine(contactPolicyRepository: ContactPolicyRepository): ExtractionEngine {
-        return HybridExtractionEngine(contactPolicyRepository)
+    fun provideExtractionEngine(
+        contactPolicyRepository: ContactPolicyRepository,
+        keywordRuleRepository: KeywordRuleRepository,
+    ): ExtractionEngine {
+        return HybridExtractionEngine(contactPolicyRepository, keywordRuleRepository)
     }
 
     @Provides

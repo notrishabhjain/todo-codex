@@ -15,12 +15,14 @@ import androidx.compose.ui.unit.dp
 import com.rishabh.todo.codex.domain.model.AppSettings
 import com.rishabh.todo.codex.domain.model.ContactProfile
 import com.rishabh.todo.codex.domain.model.ContactTrust
+import com.rishabh.todo.codex.domain.model.KeywordRule
 import com.rishabh.todo.codex.domain.model.ReminderMode
 
 @Composable
 fun SettingsScreen(
     settings: AppSettings,
     contacts: List<ContactProfile>,
+    keywordRules: List<KeywordRule>,
     onOpenNotificationAccess: () -> Unit,
     onOpenBatterySettings: () -> Unit,
     onReminderModeChange: (ReminderMode) -> Unit,
@@ -29,6 +31,7 @@ fun SettingsScreen(
     onExportToggle: (Boolean) -> Unit,
     onExportFormatChange: (String) -> Unit,
     onSetContactTrust: (ContactProfile, ContactTrust) -> Unit,
+    onToggleKeywordRule: (KeywordRule) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -82,6 +85,19 @@ fun SettingsScreen(
                             },
                         )
                     }) { Text("Cycle Trust") }
+                }
+            }
+        }
+        Text("Keyword Rules", style = MaterialTheme.typography.titleMedium)
+        keywordRules.take(12).forEach { rule ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${rule.phrase} (${rule.category})")
+                    Text("Language: ${rule.languageHint} | Weight: ${rule.weight}")
+                    Text("State: ${if (rule.enabled) "Enabled" else "Disabled"}")
+                    Button(onClick = { onToggleKeywordRule(rule) }) {
+                        Text(if (rule.enabled) "Disable Rule" else "Enable Rule")
+                    }
                 }
             }
         }

@@ -3,6 +3,7 @@ package com.rishabh.todo.codex.domain.repository
 import com.rishabh.todo.codex.domain.model.AnalyticsSnapshot
 import com.rishabh.todo.codex.domain.model.AppSettings
 import com.rishabh.todo.codex.domain.model.ContactProfile
+import com.rishabh.todo.codex.domain.model.KeywordRule
 import com.rishabh.todo.codex.domain.model.LearningEvent
 import com.rishabh.todo.codex.domain.model.NotificationRecord
 import com.rishabh.todo.codex.domain.model.Task
@@ -49,4 +50,11 @@ interface LearningRepository {
     suspend fun record(event: LearningEvent)
     suspend fun getAcceptedPhrases(): List<String>
     suspend fun getRejectedPhrases(): List<String>
+}
+
+interface KeywordRuleRepository {
+    fun observeRules(): Flow<List<KeywordRule>>
+    suspend fun getEnabledRules(): List<KeywordRule>
+    suspend fun upsert(rule: KeywordRule)
+    suspend fun count(): Int
 }
