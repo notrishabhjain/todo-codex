@@ -1,0 +1,6 @@
+[
+  { "phrase": "send", "category": "action", "weight": 0.9, "languageHint": "en" },
+  { "phrase": "review karna", "category": "action", "weight": 0.95, "languageHint": "hinglish" },
+  { "phrase": "jaldi", "category": "urgency", "weight": 0.8, "languageHint": "hinglish" },
+  { "phrase": "kal", "category": "time", "weight": 0.85, "languageHint": "hi" }
+]
