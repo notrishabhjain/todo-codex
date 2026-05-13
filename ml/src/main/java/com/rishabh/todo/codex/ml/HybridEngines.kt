@@ -1,6 +1,5 @@
 package com.rishabh.todo.codex.ml
 
-import com.microsoft.onnxruntime.OrtEnvironment
 import com.rishabh.todo.codex.domain.engine.ExtractionEngine
 import com.rishabh.todo.codex.domain.engine.LearningEngine
 import com.rishabh.todo.codex.domain.engine.ReminderScheduler
@@ -196,7 +195,4 @@ object MlModule {
     @Provides
     @Singleton
     fun provideTranscriptEngine(): TranscriptExtractionEngine = TranscriptExtractionEngineImpl()
-
-    @Provides
-    fun provideOnnxEnvironment(): OrtEnvironment = OrtEnvironment.getEnvironment()
 }
