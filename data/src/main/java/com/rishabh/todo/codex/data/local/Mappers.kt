@@ -11,6 +11,8 @@ import com.rishabh.todo.codex.domain.model.SourceType
 import com.rishabh.todo.codex.domain.model.Task
 import com.rishabh.todo.codex.domain.model.TaskPriority
 import com.rishabh.todo.codex.domain.model.TaskStatus
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 
 private val json = Json
@@ -25,7 +27,7 @@ fun TaskEntity.toDomain() = Task(
     dueAtEpochMillis = dueAtEpochMillis,
     priority = TaskPriority.valueOf(priority),
     status = TaskStatus.valueOf(status),
-    tags = json.decodeFromString(tagsJson),
+    tags = json.decodeFromString(ListSerializer(String.serializer()), tagsJson),
     notes = notes,
     originalNotificationText = originalNotificationText,
     transcriptDerived = transcriptDerived,
@@ -45,7 +47,7 @@ fun Task.toEntity() = TaskEntity(
     dueAtEpochMillis = dueAtEpochMillis,
     priority = priority.name,
     status = status.name,
-    tagsJson = json.encodeToString(tags),
+    tagsJson = json.encodeToString(ListSerializer(String.serializer()), tags),
     notes = notes,
     originalNotificationText = originalNotificationText,
     transcriptDerived = transcriptDerived,
