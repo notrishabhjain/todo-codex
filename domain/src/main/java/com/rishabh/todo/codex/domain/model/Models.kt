@@ -166,6 +166,7 @@ data class ReminderPolicy(
 )
 
 data class AppSettings(
+    val onboardingCompleted: Boolean = false,
     val reminderMode: ReminderMode = ReminderMode.BALANCED,
     val reminderIntervalMinutes: Long = 30L,
     val emailReportHour: Int = 20,

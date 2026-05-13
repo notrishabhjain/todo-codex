@@ -44,4 +44,5 @@ private class FakeKeywordRuleRepository : KeywordRuleRepository {
     override suspend fun getEnabledRules(): List<com.rishabh.todo.codex.domain.model.KeywordRule> = emptyList()
     override suspend fun upsert(rule: com.rishabh.todo.codex.domain.model.KeywordRule) = Unit
     override suspend fun count(): Int = 0
+    override suspend fun delete(ruleId: Long) = Unit
 }

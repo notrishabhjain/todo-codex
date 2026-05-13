@@ -83,6 +83,9 @@ interface KeywordRuleDao {
 
     @Query("SELECT COUNT(*) FROM keyword_rules")
     suspend fun count(): Int
+
+    @Query("DELETE FROM keyword_rules WHERE id = :ruleId")
+    suspend fun delete(ruleId: Long)
 }
 
 @Dao

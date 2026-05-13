@@ -97,6 +97,7 @@ data class ExportJobEntity(
 @Entity(tableName = "app_settings")
 data class AppSettingsEntity(
     @PrimaryKey val singletonId: Int = 1,
+    val onboardingCompleted: Boolean,
     val reminderMode: String,
     val reminderIntervalMinutes: Long,
     val emailReportHour: Int,

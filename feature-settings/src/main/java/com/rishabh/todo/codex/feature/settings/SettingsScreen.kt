@@ -8,8 +8,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.rishabh.todo.codex.domain.model.AppSettings
@@ -28,11 +33,22 @@ fun SettingsScreen(
     onReminderModeChange: (ReminderMode) -> Unit,
     onReminderIntervalChange: (Long) -> Unit,
     onDailyReportToggle: (Boolean) -> Unit,
+    onBiometricToggle: (Boolean) -> Unit,
     onExportToggle: (Boolean) -> Unit,
     onExportFormatChange: (String) -> Unit,
+    onExportPathChange: (String) -> Unit,
+    onImportJson: () -> Unit,
+    onResetOnboarding: () -> Unit,
     onSetContactTrust: (ContactProfile, ContactTrust) -> Unit,
     onToggleKeywordRule: (KeywordRule) -> Unit,
+    onDeleteKeywordRule: (KeywordRule) -> Unit,
+    onAddKeywordRule: (String, String, String) -> Unit,
 ) {
+    var newPhrase by remember { mutableStateOf("") }
+    var newCategory by remember { mutableStateOf("action") }
+    var newLanguage by remember { mutableStateOf("en") }
+    var exportPath by remember(settings.scheduledExportPath) { mutableStateOf(settings.scheduledExportPath ?: "") }
+
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -60,14 +76,48 @@ fun SettingsScreen(
         Text("Daily report: ${if (settings.dailyReportEnabled) "Enabled" else "Disabled"}")
         Button(onClick = { onDailyReportToggle(!settings.dailyReportEnabled) }) { Text("Toggle Daily Report") }
         Text("Biometric lock: ${if (settings.biometricLockEnabled) "On" else "Off"}")
+        Button(onClick = { onBiometricToggle(!settings.biometricLockEnabled) }) { Text("Toggle Biometric Lock") }
         Text("Scheduled export: ${if (settings.scheduledExportEnabled) settings.scheduledExportFormat.uppercase() else "Disabled"}")
-        Text("Export path: ${settings.scheduledExportPath ?: "Not configured"}")
+        OutlinedTextField(
+            modifier = Modifier.fillMaxWidth(),
+            value = exportPath,
+            onValueChange = { exportPath = it },
+            label = { Text("Export / Import Path") },
+        )
+        Button(onClick = { onExportPathChange(exportPath) }) { Text("Save Export Path") }
         Button(onClick = { onExportToggle(!settings.scheduledExportEnabled) }) { Text("Toggle Scheduled Export") }
         Button(onClick = {
             onExportFormatChange(if (settings.scheduledExportFormat == "json") "csv" else "json")
         }) { Text("Switch Export Format") }
+        Button(onClick = onImportJson) { Text("Import JSON From Path") }
         Button(onClick = onOpenNotificationAccess) { Text("Grant notification access") }
         Button(onClick = onOpenBatterySettings) { Text("Disable battery optimization") }
+        Button(onClick = onResetOnboarding) { Text("Reset Onboarding") }
+        Text("Add Keyword Rule", style = MaterialTheme.typography.titleMedium)
+        OutlinedTextField(
+            modifier = Modifier.fillMaxWidth(),
+            value = newPhrase,
+            onValueChange = { newPhrase = it },
+            label = { Text("Phrase") },
+        )
+        Button(onClick = {
+            newCategory = when (newCategory) {
+                "action" -> "urgency"
+                "urgency" -> "time"
+                else -> "action"
+            }
+        }) { Text("Category: ${newCategory.replaceFirstChar { it.uppercase() }}") }
+        Button(onClick = {
+            newLanguage = when (newLanguage) {
+                "en" -> "hi"
+                "hi" -> "hinglish"
+                else -> "en"
+            }
+        }) { Text("Language: ${newLanguage.uppercase()}") }
+        Button(onClick = {
+            onAddKeywordRule(newPhrase, newCategory, newLanguage)
+            newPhrase = ""
+        }) { Text("Add Rule") }
         Text("Contacts", style = MaterialTheme.typography.titleMedium)
         contacts.forEach { contact ->
             Card(modifier = Modifier.fillMaxWidth()) {
@@ -89,15 +139,14 @@ fun SettingsScreen(
             }
         }
         Text("Keyword Rules", style = MaterialTheme.typography.titleMedium)
-        keywordRules.take(12).forEach { rule ->
+        keywordRules.forEach { rule ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("${rule.phrase} (${rule.category})")
                     Text("Language: ${rule.languageHint} | Weight: ${rule.weight}")
                     Text("State: ${if (rule.enabled) "Enabled" else "Disabled"}")
-                    Button(onClick = { onToggleKeywordRule(rule) }) {
-                        Text(if (rule.enabled) "Disable Rule" else "Enable Rule")
-                    }
+                    Button(onClick = { onToggleKeywordRule(rule) }) { Text(if (rule.enabled) "Disable Rule" else "Enable Rule") }
+                    Button(onClick = { onDeleteKeywordRule(rule) }) { Text("Delete Rule") }
                 }
             }
         }

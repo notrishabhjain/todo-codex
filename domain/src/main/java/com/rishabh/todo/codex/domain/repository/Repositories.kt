@@ -57,4 +57,5 @@ interface KeywordRuleRepository {
     suspend fun getEnabledRules(): List<KeywordRule>
     suspend fun upsert(rule: KeywordRule)
     suspend fun count(): Int
+    suspend fun delete(ruleId: Long)
 }

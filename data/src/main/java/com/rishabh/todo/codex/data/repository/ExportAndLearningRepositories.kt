@@ -33,6 +33,7 @@ class KeywordRuleRepositoryImpl @Inject constructor(
     override suspend fun getEnabledRules(): List<KeywordRule> = dao.getEnabledRules().map { it.toDomain() }
     override suspend fun upsert(rule: KeywordRule) = dao.upsert(rule.toEntity())
     override suspend fun count(): Int = dao.count()
+    override suspend fun delete(ruleId: Long) = dao.delete(ruleId)
 }
 
 class ExportRepositoryImpl @Inject constructor(

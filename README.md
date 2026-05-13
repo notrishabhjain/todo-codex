@@ -24,6 +24,7 @@ Privacy-first Android task capture app that turns notifications and pasted meeti
 - The source tree is fully scaffolded, but this environment did not have `java` or `gradle`, so the project could not be compiled here.
 - Notification ingestion uses Android's `NotificationListenerService` only; no accessibility automation or cloud APIs are used.
 - ONNX Runtime Mobile is included and the extraction layer is structured for model-backed scoring, with heuristic scoring used as the default baseline.
+- Recent implementation passes added onboarding, optional biometric gate UI, editable task details, contact trust controls, scheduled export/import path management, and persistent keyword rule management.
 
 ## GitHub Build Pipeline
 

@@ -54,6 +54,7 @@ data class MainUiState(
     val settings: AppSettings = AppSettings(),
     val transcript: String = "",
     val transcriptCandidates: List<TranscriptCandidateTask> = emptyList(),
+    val operationMessage: String = "",
     val motivationLine: String = "Keep the important things visible and moving.",
 )
 
@@ -77,6 +78,7 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
     private val transcript = MutableStateFlow("")
     private val transcriptCandidates = MutableStateFlow<List<TranscriptCandidateTask>>(emptyList())
+    private val operationMessage = MutableStateFlow("")
     private val createTask = CreateTaskFromExtractionUseCase()
 
     private data class BaseStateBundle(
@@ -132,7 +134,8 @@ class MainViewModel @Inject constructor(
         baseState,
         transcript,
         transcriptCandidates,
-    ) { bundle: BaseStateBundle, transcriptText: String, candidates: List<TranscriptCandidateTask> ->
+        operationMessage,
+    ) { bundle: BaseStateBundle, transcriptText: String, candidates: List<TranscriptCandidateTask>, opMessage: String ->
         MainUiState(
             tasks = bundle.tasks,
             inbox = bundle.inbox,
@@ -142,6 +145,7 @@ class MainViewModel @Inject constructor(
             settings = bundle.settings,
             transcript = transcriptText,
             transcriptCandidates = candidates,
+            operationMessage = opMessage,
             motivationLine = buildMotivationLine(bundle.tasks, bundle.analytics),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
@@ -250,11 +254,29 @@ class MainViewModel @Inject constructor(
     }
 
     fun exportJson() {
-        viewModelScope.launch { exportRepository.exportJson("offline-task-export.json") }
+        viewModelScope.launch {
+            val path = state.value.settings.scheduledExportPath ?: "offline-task-export.json"
+            val result = exportRepository.exportJson(path)
+            operationMessage.value = result.getOrNull()?.let { "Exported JSON to $it" } ?: "JSON export failed"
+        }
     }
 
     fun exportCsv() {
-        viewModelScope.launch { exportRepository.exportCsv("offline-task-export.csv") }
+        viewModelScope.launch {
+            val path = state.value.settings.scheduledExportPath ?: "offline-task-export.csv"
+            val result = exportRepository.exportCsv(path)
+            operationMessage.value = result.getOrNull()?.let { "Exported CSV to $it" } ?: "CSV export failed"
+        }
+    }
+
+    fun importJson() {
+        viewModelScope.launch {
+            val path = state.value.settings.scheduledExportPath ?: return@launch
+            val result = exportRepository.importJson(path)
+            operationMessage.value = result.getOrNull()?.let { "Imported $it tasks from $path" } ?: "Import failed from $path"
+            analyticsRepository.refresh()
+            rescheduleReminders()
+        }
     }
 
     fun completeTask(task: Task) {
@@ -303,6 +325,43 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             val eventId = calendarIntegrationManager.createEvent(task) ?: return@launch
             taskRepository.update(task.copy(linkedCalendarEventId = eventId))
+            operationMessage.value = "Task linked to calendar event $eventId"
+        }
+    }
+
+    fun saveTaskEdits(
+        task: Task,
+        title: String,
+        description: String,
+        notes: String,
+        tagsCsv: String,
+    ) {
+        viewModelScope.launch {
+            val updated = task.copy(
+                title = title.trim().ifBlank { task.title },
+                description = description.trim(),
+                notes = notes.trim(),
+                tags = tagsCsv.split(",").map { it.trim() }.filter { it.isNotBlank() },
+            )
+            taskRepository.update(updated)
+            recordLearning(null, task.id, LearningEventType.MANUALLY_EDITED, updated.title)
+            analyticsRepository.refresh()
+            operationMessage.value = "Task updated"
+        }
+    }
+
+    fun clearTaskDueDate(task: Task) {
+        viewModelScope.launch {
+            taskRepository.update(task.copy(dueAtEpochMillis = null))
+            operationMessage.value = "Due date cleared"
+        }
+    }
+
+    fun postponeTaskOneDay(task: Task) {
+        viewModelScope.launch {
+            val newDue = (task.dueAtEpochMillis ?: System.currentTimeMillis()) + 24L * 60L * 60L * 1000L
+            taskRepository.update(task.copy(dueAtEpochMillis = newDue))
+            operationMessage.value = "Due date pushed by one day"
         }
     }
 
@@ -354,6 +413,30 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun updateExportPath(path: String) {
+        viewModelScope.launch {
+            settingsRepository.update(state.value.settings.copy(scheduledExportPath = path.trim().ifBlank { null }))
+        }
+    }
+
+    fun toggleBiometricLock(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.update(state.value.settings.copy(biometricLockEnabled = enabled))
+        }
+    }
+
+    fun completeOnboarding() {
+        viewModelScope.launch {
+            settingsRepository.update(state.value.settings.copy(onboardingCompleted = true))
+        }
+    }
+
+    fun resetOnboarding() {
+        viewModelScope.launch {
+            settingsRepository.update(state.value.settings.copy(onboardingCompleted = false))
+        }
+    }
+
     fun setContactTrust(contactProfile: ContactProfile, trust: ContactTrust) {
         viewModelScope.launch {
             contactPolicyRepository.upsert(contactProfile.copy(trust = trust))
@@ -363,6 +446,39 @@ class MainViewModel @Inject constructor(
     fun toggleKeywordRule(rule: KeywordRule) {
         viewModelScope.launch {
             keywordRuleRepository.upsert(rule.copy(enabled = !rule.enabled))
+        }
+    }
+
+    fun deleteKeywordRule(rule: KeywordRule) {
+        if (rule.id == 0L) return
+        viewModelScope.launch {
+            keywordRuleRepository.delete(rule.id)
+            operationMessage.value = "Deleted rule: ${rule.phrase}"
+        }
+    }
+
+    fun createKeywordRule(
+        phrase: String,
+        category: String,
+        languageHint: String,
+    ) {
+        val normalized = phrase.trim().lowercase()
+        if (normalized.isBlank()) return
+        viewModelScope.launch {
+            keywordRuleRepository.upsert(
+                KeywordRule(
+                    phrase = normalized,
+                    category = category,
+                    languageHint = languageHint,
+                    weight = when (category) {
+                        "action" -> 0.9f
+                        "urgency" -> 0.8f
+                        "time" -> 0.85f
+                        else -> 0.7f
+                    },
+                    enabled = true,
+                ),
+            )
         }
     }
 

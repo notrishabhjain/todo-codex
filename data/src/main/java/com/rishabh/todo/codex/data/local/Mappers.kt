@@ -144,6 +144,7 @@ fun AnalyticsSnapshotEntity.toDomain() = AnalyticsSnapshot(
 )
 
 fun AppSettingsEntity.toDomain() = AppSettings(
+    onboardingCompleted = onboardingCompleted,
     reminderMode = com.rishabh.todo.codex.domain.model.ReminderMode.valueOf(reminderMode),
     reminderIntervalMinutes = reminderIntervalMinutes,
     emailReportHour = emailReportHour,
@@ -155,6 +156,7 @@ fun AppSettingsEntity.toDomain() = AppSettings(
 )
 
 fun AppSettings.toEntity() = AppSettingsEntity(
+    onboardingCompleted = onboardingCompleted,
     reminderMode = reminderMode.name,
     reminderIntervalMinutes = reminderIntervalMinutes,
     emailReportHour = emailReportHour,
