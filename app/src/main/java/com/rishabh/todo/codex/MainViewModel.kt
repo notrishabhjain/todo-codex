@@ -55,22 +55,46 @@ class MainViewModel @Inject constructor(
     private val transcriptCandidates = MutableStateFlow<List<TranscriptCandidateTask>>(emptyList())
     private val createTask = CreateTaskFromExtractionUseCase()
 
+    private data class BaseStateBundle(
+        val tasks: List<Task>,
+        val inbox: List<NotificationRecord>,
+        val analytics: AnalyticsSnapshot,
+        val settings: AppSettings,
+    )
+
     val state = combine(
-        taskRepository.observeTasks(),
-        notificationRepository.observeInboxCandidates(),
-        analyticsRepository.observeSnapshot(),
-        settingsRepository.observeSettings(),
+        combine(
+            combine(
+                combine(
+                    taskRepository.observeTasks(),
+                    notificationRepository.observeInboxCandidates(),
+                ) { tasks: List<Task>, inbox: List<NotificationRecord> ->
+                    tasks to inbox
+                },
+                analyticsRepository.observeSnapshot(),
+            ) { taskInboxPair: Pair<List<Task>, List<NotificationRecord>>, analytics: AnalyticsSnapshot ->
+                Triple(taskInboxPair.first, taskInboxPair.second, analytics)
+            },
+            settingsRepository.observeSettings(),
+        ) { taskInboxAnalytics: Triple<List<Task>, List<NotificationRecord>, AnalyticsSnapshot>, settings: AppSettings ->
+            BaseStateBundle(
+                tasks = taskInboxAnalytics.first,
+                inbox = taskInboxAnalytics.second,
+                analytics = taskInboxAnalytics.third,
+                settings = settings,
+            )
+        },
         transcript,
         transcriptCandidates,
-    ) { tasks, inbox, analytics, settings, transcriptText, candidates ->
+    ) { bundle: BaseStateBundle, transcriptText: String, candidates: List<TranscriptCandidateTask> ->
         MainUiState(
-            tasks = tasks,
-            inbox = inbox,
-            analytics = analytics,
-            settings = settings,
+            tasks = bundle.tasks,
+            inbox = bundle.inbox,
+            analytics = bundle.analytics,
+            settings = bundle.settings,
             transcript = transcriptText,
             transcriptCandidates = candidates,
-            motivationLine = buildMotivationLine(tasks, analytics),
+            motivationLine = buildMotivationLine(bundle.tasks, bundle.analytics),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState())
 
