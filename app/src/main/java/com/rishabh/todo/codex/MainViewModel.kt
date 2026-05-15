@@ -23,7 +23,6 @@ import com.rishabh.todo.codex.domain.model.LearningEventType
 import com.rishabh.todo.codex.domain.model.NotificationRecord
 import com.rishabh.todo.codex.domain.model.ReminderMode
 import com.rishabh.todo.codex.domain.model.ReminderPolicy
-import com.rishabh.todo.codex.domain.model.ReminderPolicy
 import com.rishabh.todo.codex.domain.model.Task
 import com.rishabh.todo.codex.domain.model.TaskCreationDecision
 import com.rishabh.todo.codex.domain.model.TaskPriority
@@ -323,7 +322,7 @@ class MainViewModel @Inject constructor(
     fun addTaskToCalendar(task: Task) {
         viewModelScope.launch {
             val eventId = calendarIntegrationManager.createEvent(task) ?: return@launch
-            taskRepository.update(task.copy(linkedCalendarEventId = eventId))
+            taskRepository.update(task.copy(calendarEventId = eventId))
             operationMessage.value = "Task linked to calendar event $eventId"
         }
     }
@@ -345,7 +344,7 @@ class MainViewModel @Inject constructor(
 
     fun clearTaskDueDate(task: Task) {
         viewModelScope.launch {
-            taskRepository.update(task.copy(dueAtEpochMillis = null))
+            taskRepository.update(task.copy(dueAt = null))
             operationMessage.value = "Due date cleared"
         }
     }
