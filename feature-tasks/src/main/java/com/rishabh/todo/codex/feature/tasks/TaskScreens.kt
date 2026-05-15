@@ -1,25 +1,27 @@
 package com.rishabh.todo.codex.feature.tasks
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.rishabh.todo.codex.domain.model.Task
 import com.rishabh.todo.codex.domain.model.TaskPriority
@@ -27,6 +29,7 @@ import com.rishabh.todo.codex.domain.model.TaskStatus
 import java.text.DateFormat
 import java.util.Date
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(tasks: List<Task>, onTaskClick: (Task) -> Unit) {
     var priorityFilter by remember { mutableStateOf("ALL") }
@@ -38,120 +41,173 @@ fun TasksScreen(tasks: List<Task>, onTaskClick: (Task) -> Unit) {
     }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Filters", style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = {
-                        priorityFilter = when (priorityFilter) {
-                            "ALL" -> TaskPriority.CRITICAL.name
-                            TaskPriority.CRITICAL.name -> TaskPriority.HIGH.name
-                            TaskPriority.HIGH.name -> TaskPriority.MEDIUM.name
-                            TaskPriority.MEDIUM.name -> TaskPriority.LOW.name
-                            else -> "ALL"
-                        }
-                    }) { Text("Priority: $priorityFilter") }
-                    Button(onClick = {
-                        statusFilter = when (statusFilter) {
-                            TaskStatus.PENDING.name -> TaskStatus.COMPLETED.name
-                            TaskStatus.COMPLETED.name -> TaskStatus.ARCHIVED.name
-                            TaskStatus.ARCHIVED.name -> "ALL"
-                            else -> TaskStatus.PENDING.name
-                        }
-                    }) { Text("Status: $statusFilter") }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(bottom = 8.dp)) {
+                Text("TaskMind", style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
+                Text("Your Actionable Insights", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    FilterChip(
+                        selected = priorityFilter != "ALL",
+                        onClick = {
+                            priorityFilter = when (priorityFilter) {
+                                "ALL" -> TaskPriority.URGENT.name
+                                TaskPriority.URGENT.name -> TaskPriority.HIGH.name
+                                TaskPriority.HIGH.name -> TaskPriority.MEDIUM.name
+                                TaskPriority.MEDIUM.name -> TaskPriority.LOW.name
+                                else -> "ALL"
+                            }
+                        },
+                        label = { Text(if (priorityFilter == "ALL") "Priority" else priorityFilter) }
+                    )
+                    FilterChip(
+                        selected = statusFilter != "ALL",
+                        onClick = {
+                            statusFilter = when (statusFilter) {
+                                TaskStatus.PENDING.name -> TaskStatus.COMPLETED.name
+                                TaskStatus.COMPLETED.name -> "ALL"
+                                else -> TaskStatus.PENDING.name
+                            }
+                        },
+                        label = { Text(if (statusFilter == "ALL") "Status" else statusFilter) }
+                    )
                 }
-                Text("Showing ${filteredTasks.size} of ${tasks.size} tasks")
             }
         }
-        items(filteredTasks) { task ->
-            Card(modifier = Modifier.fillMaxWidth().clickable { onTaskClick(task) }) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(task.title, style = MaterialTheme.typography.titleMedium)
-                    Text(task.description, style = MaterialTheme.typography.bodyMedium)
-                    Text("Priority: ${task.priority} | Status: ${task.status}")
-                    Text("Due: ${task.dueAtEpochMillis?.let { DateFormat.getDateTimeInstance().format(Date(it)) } ?: "None"}")
-                }
-            }
+        
+        items(filteredTasks, key = { it.id.toString() }) { task ->
+            TaskCard(task = task, onClick = { onTaskClick(task) })
         }
     }
 }
 
 @Composable
-fun TaskDetailScreen(
-    task: Task?,
-    onComplete: (Task) -> Unit,
-    onDelete: (Task) -> Unit,
-    onArchive: (Task) -> Unit,
-    onRaisePriority: (Task) -> Unit,
-    onAddToCalendar: (Task) -> Unit,
-    onSaveEdits: (Task, String, String, String, String) -> Unit,
-    onClearDueDate: (Task) -> Unit,
-    onPostponeOneDay: (Task) -> Unit,
-) {
-    var title by remember(task?.id) { mutableStateOf(task?.title.orEmpty()) }
-    var description by remember(task?.id) { mutableStateOf(task?.description.orEmpty()) }
-    var notes by remember(task?.id) { mutableStateOf(task?.notes.orEmpty()) }
-    var tagsCsv by remember(task?.id) { mutableStateOf(task?.tags?.joinToString(", ").orEmpty()) }
+fun TaskCard(task: Task, onClick: () -> Unit) {
+    val gradientColors = when(task.priority) {
+        TaskPriority.URGENT -> listOf(Color(0xFFFF5252), Color(0xFFFF1744))
+        TaskPriority.HIGH -> listOf(Color(0xFFFFB74D), Color(0xFFFF9800))
+        TaskPriority.MEDIUM -> listOf(Color(0xFF64B5F6), Color(0xFF2196F3))
+        TaskPriority.LOW -> listOf(Color(0xFF81C784), Color(0xFF4CAF50))
+    }
 
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { onClick() },
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Text(task?.title ?: "Select a task", style = MaterialTheme.typography.headlineSmall)
-        OutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = title,
-            onValueChange = { title = it },
-            label = { Text("Title") },
-        )
-        OutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Description") },
-        )
-        OutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = notes,
-            onValueChange = { notes = it },
-            label = { Text("Notes") },
-        )
-        OutlinedTextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = tagsCsv,
-            onValueChange = { tagsCsv = it },
-            label = { Text("Tags (comma separated)") },
-        )
-        Text("Source: ${task?.sourceType ?: "-"}")
-        Text("Sender: ${task?.sender ?: "-"}")
-        Text("Due: ${task?.dueAtEpochMillis?.let { DateFormat.getDateTimeInstance().format(Date(it)) } ?: "None"}")
-        Text("Original: ${task?.originalNotificationText ?: "-"}")
-        Text("Confidence: ${task?.confidence ?: 0f}")
-        if (task != null) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onComplete(task) }) { Text("Complete") }
-                Button(onClick = { onDelete(task) }) { Text("Delete") }
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            Box(modifier = Modifier.width(6.dp).fillMaxHeight().background(Brush.verticalGradient(gradientColors)))
+            
+            Column(modifier = Modifier.padding(16.dp).weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(task.sourceAppDisplay, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                    if (task.needsConfirmation) {
+                        Surface(color = MaterialTheme.colorScheme.errorContainer, shape = RoundedCornerShape(8.dp)) {
+                            Text("Confirm?", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                        }
+                    }
+                }
+                
+                Text(task.text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+                
+                if (task.sender != null) {
+                    Text("From: ${task.sender}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                
+                if (task.dueAt != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.Default.CalendarToday, contentDescription = "Due", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
+                        Text(DateFormat.getDateTimeInstance().format(Date(task.dueAt)), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
             }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onArchive(task) }) { Text("Archive") }
-                Button(onClick = { onRaisePriority(task) }) { Text(nextPriorityLabel(task.priority)) }
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onClearDueDate(task) }) { Text("Clear Due") }
-                Button(onClick = { onPostponeOneDay(task) }) { Text("Push 1 Day") }
-            }
-            Button(onClick = { onSaveEdits(task, title, description, notes, tagsCsv) }) { Text("Save Edits") }
-            Button(onClick = { onAddToCalendar(task) }) { Text("Add To Calendar") }
         }
     }
 }
 
-private fun nextPriorityLabel(priority: TaskPriority): String = when (priority) {
-    TaskPriority.LOW -> "Set Medium"
-    TaskPriority.MEDIUM -> "Set High"
-    TaskPriority.HIGH -> "Set Critical"
-    TaskPriority.CRITICAL -> "Keep Critical"
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TaskDetailScreen(
+    task: Task?,
+    onComplete: (Task) -> Unit,
+    onDelete: (Task) -> Unit,
+    onRaisePriority: (Task) -> Unit,
+    onAddToCalendar: (Task) -> Unit,
+    onSaveEdits: (Task, String) -> Unit, // simplified to just text
+) {
+    if (task == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Select a task") }
+        return
+    }
+
+    var text by remember(task.id) { mutableStateOf(task.text) }
+
+    Column(
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text("Task Details", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
+        
+        OutlinedTextField(
+            modifier = Modifier.fillMaxWidth(),
+            value = text,
+            onValueChange = { text = it },
+            label = { Text("Task Action") },
+            shape = RoundedCornerShape(12.dp)
+        )
+        
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Source App: ${task.sourceAppDisplay}", style = MaterialTheme.typography.bodyMedium)
+                Text("Sender: ${task.sender ?: "-"}", style = MaterialTheme.typography.bodyMedium)
+                Text("Due: ${task.dueAt?.let { DateFormat.getDateTimeInstance().format(Date(it)) } ?: "None"}", style = MaterialTheme.typography.bodyMedium)
+                Text("Priority: ${task.priority.name}", style = MaterialTheme.typography.bodyMedium)
+                Text("Keywords: ${task.triggerKeywords.joinToString()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        
+        Text("Original Message:", style = MaterialTheme.typography.titleSmall)
+        Text(task.rawSourceText, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        
+        Spacer(modifier = Modifier.weight(1f))
+        
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = { onComplete(task) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) { 
+                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Complete") 
+            }
+            Button(onClick = { onDelete(task) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)) { 
+                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Delete") 
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = { onRaisePriority(task) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Raise Priority") }
+            OutlinedButton(onClick = { onAddToCalendar(task) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { 
+                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Calendar") 
+            }
+        }
+        Button(onClick = { onSaveEdits(task, text) }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) { 
+            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Save Edits") 
+        }
+    }
 }

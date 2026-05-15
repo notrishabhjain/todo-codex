@@ -11,7 +11,6 @@ import com.rishabh.todo.codex.domain.model.LearningEvent
 import com.rishabh.todo.codex.domain.model.NotificationRecord
 import com.rishabh.todo.codex.domain.model.ReminderPolicy
 import com.rishabh.todo.codex.domain.model.ReminderMode
-import com.rishabh.todo.codex.domain.model.SourceType
 import com.rishabh.todo.codex.domain.model.Task
 import com.rishabh.todo.codex.domain.model.TaskCreationDecision
 import com.rishabh.todo.codex.domain.model.TaskPriority
@@ -55,15 +54,16 @@ class HybridExtractionEngine @Inject constructor(
             ContactTrust.IGNORE -> 0f
         }
         val modelScore = score(text, matchedActions, matchedUrgency, due != null, senderWeight)
-        val actionable = matchedActions.isNotEmpty() || modelScore >= 0.55f
+        val actionable = modelScore >= 0.40f
         val priority = when {
             matchedUrgency.isNotEmpty() || senderWeight >= 0.75f -> TaskPriority.HIGH
-            notification.sourceType == SourceType.CALENDAR -> TaskPriority.CRITICAL
+            notification.sourceAppDisplay == "Calendar" -> TaskPriority.URGENT
             else -> TaskPriority.MEDIUM
         }
         val decision = when {
-            !actionable -> TaskCreationDecision.IGNORE
-            notification.sourceType == SourceType.CALENDAR -> TaskCreationDecision.AUTO_CREATE
+            modelScore < 0.40f -> TaskCreationDecision.IGNORE
+            modelScore >= 0.75f -> TaskCreationDecision.AUTO_CREATE
+            notification.sourceAppDisplay == "Calendar" -> TaskCreationDecision.AUTO_CREATE
             else -> TaskCreationDecision.INBOX_REVIEW
         }
         return ExtractionResult(
@@ -75,7 +75,8 @@ class HybridExtractionEngine @Inject constructor(
             decision = decision,
             confidence = modelScore,
             sender = notification.sender,
-            sourceType = notification.sourceType,
+            sourceApp = notification.packageName,
+            sourceAppDisplay = notification.sourceAppDisplay,
             reason = ExtractionReason(
                 matchedKeywords = matchedActions + matchedUrgency,
                 inferredDatePhrase = timeTerms.distinct().firstOrNull { text.contains(it) },

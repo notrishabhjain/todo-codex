@@ -30,13 +30,13 @@ class TaskRepositoryImpl @Inject constructor(
 
     override fun observePendingTasks() = taskDao.observePendingTasks().map { it.map { entity -> entity.toDomain() } }
 
-    override suspend fun upsert(task: com.rishabh.todo.codex.domain.model.Task): Long = taskDao.upsert(task.toEntity())
+    override suspend fun upsert(task: com.rishabh.todo.codex.domain.model.Task) { taskDao.upsert(task.toEntity()) }
 
     override suspend fun update(task: com.rishabh.todo.codex.domain.model.Task) = taskDao.update(task.toEntity())
 
-    override suspend fun delete(taskId: Long) = taskDao.delete(taskId)
+    override suspend fun delete(taskId: java.util.UUID) = taskDao.delete(taskId.toString())
 
-    override suspend fun complete(taskId: Long) = taskDao.complete(taskId)
+    override suspend fun complete(taskId: java.util.UUID) = taskDao.complete(taskId.toString())
 }
 
 class NotificationRepositoryImpl @Inject constructor(
@@ -90,13 +90,13 @@ class AnalyticsRepositoryImpl @Inject constructor(
             Instant.ofEpochMilli(epochMillis).atZone(zone).toLocalDate() >= date
 
         val ignoredToday = learningDao.getRejectedPhrases().size
-        val source = tasks.groupingBy { it.sourceType }.eachCount().maxByOrNull { it.value }?.key ?: "None"
+        val source = tasks.groupingBy { it.sourceAppDisplay }.eachCount().maxByOrNull { it.value }?.key ?: "None"
 
         analyticsDao.upsert(
             AnalyticsSnapshotEntity(
-                completedToday = completed.count { sameOrAfter(it.createdAtEpochMillis, today) },
-                completedWeek = completed.count { sameOrAfter(it.createdAtEpochMillis, weekStart) },
-                completedMonth = completed.count { sameOrAfter(it.createdAtEpochMillis, monthStart) },
+                completedToday = completed.count { sameOrAfter(it.createdAt, today) },
+                completedWeek = completed.count { sameOrAfter(it.createdAt, weekStart) },
+                completedMonth = completed.count { sameOrAfter(it.createdAt, monthStart) },
                 pendingBacklog = tasks.count { it.status == "PENDING" },
                 completionRate = completed.size.toFloat() / total.toFloat(),
                 ignoredToday = ignoredToday,

@@ -12,10 +12,10 @@ import kotlinx.coroutines.flow.Flow
 interface TaskRepository {
     fun observeTasks(): Flow<List<Task>>
     fun observePendingTasks(): Flow<List<Task>>
-    suspend fun upsert(task: Task): Long
+    suspend fun upsert(task: Task)
     suspend fun update(task: Task)
-    suspend fun delete(taskId: Long)
-    suspend fun complete(taskId: Long)
+    suspend fun delete(taskId: java.util.UUID)
+    suspend fun complete(taskId: java.util.UUID)
 }
 
 interface NotificationRepository {

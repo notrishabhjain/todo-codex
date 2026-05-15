@@ -5,30 +5,29 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "tasks")
 data class TaskEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
-    val title: String,
-    val description: String,
-    val sourceType: String,
+    @PrimaryKey val id: String,
+    val text: String,
+    val rawSourceText: String,
+    val sourceApp: String,
+    val sourceAppDisplay: String,
     val sender: String?,
-    val createdAtEpochMillis: Long,
-    val dueAtEpochMillis: Long?,
+    val createdAt: Long,
+    val dueAt: Long?,
+    val completedAt: Long?,
     val priority: String,
     val status: String,
-    val tagsJson: String,
-    val notes: String,
-    val originalNotificationText: String,
-    val transcriptDerived: Boolean,
-    val ownerLabel: String?,
-    val reminderState: String,
-    val linkedCalendarEventId: Long?,
+    val triggerKeywordsJson: String,
     val confidence: Float,
+    val needsConfirmation: Boolean,
+    val calendarEventId: Long?,
+    val language: String,
 )
 
 @Entity(tableName = "notifications")
 data class NotificationEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
     val packageName: String,
-    val sourceType: String,
+    val sourceAppDisplay: String,
     val sender: String?,
     val title: String?,
     val body: String?,
@@ -49,7 +48,7 @@ data class ContactEntity(
 @Entity(tableName = "learning_events")
 data class LearningEventEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
-    val taskId: Long?,
+    val taskId: String?,
     val notificationId: Long?,
     val eventType: String,
     val payload: String,
@@ -81,7 +80,7 @@ data class AnalyticsSnapshotEntity(
 @Entity(tableName = "calendar_links")
 data class CalendarLinkEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
-    val taskId: Long,
+    val taskId: String,
     val calendarEventId: Long,
 )
 

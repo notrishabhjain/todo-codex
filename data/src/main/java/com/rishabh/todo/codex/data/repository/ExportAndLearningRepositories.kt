@@ -51,16 +51,16 @@ class ExportRepositoryImpl @Inject constructor(
 
     override suspend fun exportCsv(destinationPath: String): Result<String> = runCatching {
         val lines = buildList {
-            add("id,title,description,source,sender,due,priority,status")
+            add("id,text,rawSourceText,sourceAppDisplay,sender,dueAt,priority,status")
             taskDao.getAll().forEach { task ->
                 add(
                     listOf(
                         task.id,
-                        task.title.escapeCsv(),
-                        task.description.escapeCsv(),
-                        task.sourceType,
+                        task.text.escapeCsv(),
+                        task.rawSourceText.escapeCsv(),
+                        task.sourceAppDisplay,
                         task.sender.orEmpty().escapeCsv(),
-                        task.dueAtEpochMillis ?: "",
+                        task.dueAt ?: "",
                         task.priority,
                         task.status,
                     ).joinToString(","),

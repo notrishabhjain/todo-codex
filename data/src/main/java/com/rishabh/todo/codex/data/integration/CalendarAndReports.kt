@@ -13,12 +13,12 @@ class CalendarIntegrationManager @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     fun createEvent(task: Task): Long? {
-        val start = task.dueAtEpochMillis ?: return null
+        val start = task.dueAt ?: return null
         val values = ContentValues().apply {
             put(CalendarContract.Events.DTSTART, start)
             put(CalendarContract.Events.DTEND, start + 30 * 60 * 1000)
-            put(CalendarContract.Events.TITLE, task.title)
-            put(CalendarContract.Events.DESCRIPTION, task.description)
+            put(CalendarContract.Events.TITLE, task.text)
+            put(CalendarContract.Events.DESCRIPTION, task.rawSourceText)
             put(CalendarContract.Events.CALENDAR_ID, 1)
             put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
         }

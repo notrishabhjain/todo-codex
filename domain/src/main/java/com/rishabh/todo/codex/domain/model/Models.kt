@@ -1,20 +1,25 @@
 package com.rishabh.todo.codex.domain.model
 
 import java.time.Instant
+import java.util.UUID
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 
-enum class SourceType {
-    WHATSAPP,
-    GMAIL,
-    TELEGRAM,
-    SLACK,
-    SMS,
-    CALENDAR,
-    GENERIC,
+object UUIDSerializer : KSerializer<UUID> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UUID", PrimitiveKind.STRING)
+    override fun serialize(encoder: Encoder, value: UUID) = encoder.encodeString(value.toString())
+    override fun deserialize(decoder: Decoder): UUID = UUID.fromString(decoder.decodeString())
 }
 
+
+
 enum class TaskPriority {
-    CRITICAL,
+    URGENT,
     HIGH,
     MEDIUM,
     LOW,
@@ -58,7 +63,7 @@ enum class LearningEventType {
 data class NotificationRecord(
     val id: Long = 0L,
     val packageName: String,
-    val sourceType: SourceType,
+    val sourceAppDisplay: String,
     val sender: String?,
     val title: String?,
     val body: String?,
@@ -86,29 +91,30 @@ data class ExtractionResult(
     val decision: TaskCreationDecision,
     val confidence: Float,
     val sender: String?,
-    val sourceType: SourceType,
+    val sourceApp: String,
+    val sourceAppDisplay: String,
     val reason: ExtractionReason,
 )
 
 @Serializable
 data class Task(
-    val id: Long = 0L,
-    val title: String,
-    val description: String,
-    val sourceType: SourceType,
-    val sender: String?,
-    val createdAtEpochMillis: Long = Instant.now().toEpochMilli(),
-    val dueAtEpochMillis: Long? = null,
+    @Serializable(with = UUIDSerializer::class)
+    val id: UUID = UUID.randomUUID(),
+    val text: String,
+    val rawSourceText: String,
     val priority: TaskPriority = TaskPriority.MEDIUM,
     val status: TaskStatus = TaskStatus.PENDING,
-    val tags: List<String> = emptyList(),
-    val notes: String = "",
-    val originalNotificationText: String = "",
-    val transcriptDerived: Boolean = false,
-    val ownerLabel: String? = null,
-    val reminderState: String = "ACTIVE",
-    val linkedCalendarEventId: Long? = null,
+    val sourceApp: String,
+    val sourceAppDisplay: String,
+    val sender: String?,
+    val createdAt: Long = Instant.now().toEpochMilli(),
+    val completedAt: Long? = null,
+    val dueAt: Long? = null,
+    val triggerKeywords: List<String> = emptyList(),
     val confidence: Float = 0f,
+    val needsConfirmation: Boolean = false,
+    val calendarEventId: Long? = null,
+    val language: String = "en",
 )
 
 @Serializable
@@ -132,7 +138,7 @@ data class KeywordRule(
 @Serializable
 data class LearningEvent(
     val id: Long = 0L,
-    val taskId: Long?,
+    val taskId: String?,
     val notificationId: Long?,
     val eventType: LearningEventType,
     val payload: String,

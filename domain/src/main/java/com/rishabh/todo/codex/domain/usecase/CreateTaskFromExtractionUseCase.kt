@@ -12,16 +12,16 @@ class CreateTaskFromExtractionUseCase {
         ownerLabel: String? = null,
     ): Task {
         return Task(
-            title = extraction.title,
-            description = extraction.description,
-            sourceType = extraction.sourceType,
+            text = extraction.title, // Actionable task description
+            rawSourceText = notification.rawText,
+            sourceApp = notification.packageName,
+            sourceAppDisplay = extraction.sourceAppDisplay,
             sender = extraction.sender ?: notification.sender,
-            dueAtEpochMillis = extraction.dueAtEpochMillis,
+            dueAt = extraction.dueAtEpochMillis,
             priority = extraction.priority,
-            originalNotificationText = notification.rawText,
-            transcriptDerived = transcriptDerived,
-            ownerLabel = ownerLabel,
             confidence = extraction.confidence,
+            triggerKeywords = extraction.reason.matchedKeywords,
+            needsConfirmation = extraction.decision == com.rishabh.todo.codex.domain.model.TaskCreationDecision.INBOX_REVIEW
         )
     }
 }

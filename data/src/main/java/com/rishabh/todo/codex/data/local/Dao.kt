@@ -9,23 +9,23 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TaskDao {
-    @Query("SELECT * FROM tasks ORDER BY createdAtEpochMillis DESC")
+    @Query("SELECT * FROM tasks ORDER BY createdAt DESC")
     fun observeTasks(): Flow<List<TaskEntity>>
 
-    @Query("SELECT * FROM tasks WHERE status = 'PENDING' ORDER BY dueAtEpochMillis IS NULL, dueAtEpochMillis ASC")
+    @Query("SELECT * FROM tasks WHERE status = 'PENDING' ORDER BY dueAt IS NULL, dueAt ASC")
     fun observePendingTasks(): Flow<List<TaskEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(entity: TaskEntity): Long
+    suspend fun upsert(entity: TaskEntity)
 
     @Update
     suspend fun update(entity: TaskEntity)
 
     @Query("DELETE FROM tasks WHERE id = :taskId")
-    suspend fun delete(taskId: Long)
+    suspend fun delete(taskId: String)
 
     @Query("UPDATE tasks SET status = 'COMPLETED' WHERE id = :taskId")
-    suspend fun complete(taskId: Long)
+    suspend fun complete(taskId: String)
 
     @Query("SELECT * FROM tasks")
     suspend fun getAll(): List<TaskEntity>

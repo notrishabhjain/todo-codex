@@ -165,32 +165,15 @@ private fun TaskManagerApp(
                                 viewModel.deleteTask(it)
                                 selectedTask = null
                             },
-                            onArchive = {
-                                viewModel.archiveTask(it)
-                                selectedTask = null
-                            },
                             onRaisePriority = {
                                 viewModel.raiseTaskPriority(it)
                                 selectedTask = it
                             },
                             onAddToCalendar = viewModel::addTaskToCalendar,
-                            onSaveEdits = { task, title, description, notes, tags ->
-                                viewModel.saveTaskEdits(task, title, description, notes, tags)
+                            onSaveEdits = { task, text ->
+                                viewModel.saveTaskEdits(task, text)
                                 selectedTask = task.copy(
-                                    title = title,
-                                    description = description,
-                                    notes = notes,
-                                    tags = tags.split(",").map { it.trim() }.filter { it.isNotBlank() },
-                                )
-                            },
-                            onClearDueDate = {
-                                viewModel.clearTaskDueDate(it)
-                                selectedTask = it.copy(dueAtEpochMillis = null)
-                            },
-                            onPostponeOneDay = {
-                                viewModel.postponeTaskOneDay(it)
-                                selectedTask = it.copy(
-                                    dueAtEpochMillis = (it.dueAtEpochMillis ?: System.currentTimeMillis()) + 24L * 60L * 60L * 1000L,
+                                    text = text,
                                 )
                             },
                         )
@@ -316,8 +299,8 @@ private fun DashboardScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Text(task.title)
-                    Text("Priority ${task.priority} | ${task.sender ?: task.sourceType.name}")
+                    Text(task.text)
+                    Text("Priority ${task.priority} | ${task.sender ?: task.sourceAppDisplay}")
                 }
             }
         }

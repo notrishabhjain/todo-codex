@@ -23,7 +23,7 @@ import com.rishabh.todo.codex.domain.model.LearningEventType
 import com.rishabh.todo.codex.domain.model.NotificationRecord
 import com.rishabh.todo.codex.domain.model.ReminderMode
 import com.rishabh.todo.codex.domain.model.ReminderPolicy
-import com.rishabh.todo.codex.domain.model.SourceType
+import com.rishabh.todo.codex.domain.model.ReminderPolicy
 import com.rishabh.todo.codex.domain.model.Task
 import com.rishabh.todo.codex.domain.model.TaskCreationDecision
 import com.rishabh.todo.codex.domain.model.TaskPriority
@@ -219,7 +219,7 @@ class MainViewModel @Inject constructor(
                 .forEach { candidate ->
                     val pseudoNotification = NotificationRecord(
                         packageName = "transcript",
-                        sourceType = SourceType.GENERIC,
+                        sourceAppDisplay = "Transcript",
                         sender = candidate.owner,
                         title = candidate.title,
                         body = candidate.description,
@@ -236,15 +236,14 @@ class MainViewModel @Inject constructor(
                         decision = TaskCreationDecision.AUTO_CREATE,
                         confidence = candidate.confidence,
                         sender = candidate.owner,
-                        sourceType = SourceType.GENERIC,
+                        sourceApp = "transcript",
+                        sourceAppDisplay = "Transcript",
                         reason = ExtractionReason(modelScore = candidate.confidence),
                     )
                     taskRepository.upsert(
                         createTask(
                             pseudoNotification,
                             extraction,
-                            transcriptDerived = true,
-                            ownerLabel = candidate.owner,
                         ),
                     )
                 }
@@ -282,7 +281,7 @@ class MainViewModel @Inject constructor(
     fun completeTask(task: Task) {
         viewModelScope.launch {
             taskRepository.complete(task.id)
-            recordLearning(null, task.id, LearningEventType.COMPLETED, task.title)
+            recordLearning(null, task.id.toString(), LearningEventType.COMPLETED, task.text)
             analyticsRepository.refresh()
             rescheduleReminders()
         }
@@ -310,12 +309,12 @@ class MainViewModel @Inject constructor(
                 priority = when (task.priority) {
                     TaskPriority.LOW -> TaskPriority.MEDIUM
                     TaskPriority.MEDIUM -> TaskPriority.HIGH
-                    TaskPriority.HIGH -> TaskPriority.CRITICAL
-                    TaskPriority.CRITICAL -> TaskPriority.CRITICAL
+                    TaskPriority.HIGH -> TaskPriority.URGENT
+                    TaskPriority.URGENT -> TaskPriority.URGENT
                 },
             )
             taskRepository.update(updated)
-            recordLearning(null, task.id, LearningEventType.MANUALLY_EDITED, updated.title)
+            recordLearning(null, task.id.toString(), LearningEventType.MANUALLY_EDITED, updated.text)
             analyticsRepository.refresh()
             rescheduleReminders()
         }
@@ -331,20 +330,14 @@ class MainViewModel @Inject constructor(
 
     fun saveTaskEdits(
         task: Task,
-        title: String,
-        description: String,
-        notes: String,
-        tagsCsv: String,
+        text: String,
     ) {
         viewModelScope.launch {
             val updated = task.copy(
-                title = title.trim().ifBlank { task.title },
-                description = description.trim(),
-                notes = notes.trim(),
-                tags = tagsCsv.split(",").map { it.trim() }.filter { it.isNotBlank() },
+                text = text.trim().ifBlank { task.text },
             )
             taskRepository.update(updated)
-            recordLearning(null, task.id, LearningEventType.MANUALLY_EDITED, updated.title)
+            recordLearning(null, task.id.toString(), LearningEventType.MANUALLY_EDITED, updated.text)
             analyticsRepository.refresh()
             operationMessage.value = "Task updated"
         }
@@ -359,8 +352,8 @@ class MainViewModel @Inject constructor(
 
     fun postponeTaskOneDay(task: Task) {
         viewModelScope.launch {
-            val newDue = (task.dueAtEpochMillis ?: System.currentTimeMillis()) + 24L * 60L * 60L * 1000L
-            taskRepository.update(task.copy(dueAtEpochMillis = newDue))
+            val newDue = (task.dueAt ?: System.currentTimeMillis()) + 24L * 60L * 60L * 1000L
+            taskRepository.update(task.copy(dueAt = newDue))
             operationMessage.value = "Due date pushed by one day"
         }
     }
@@ -496,7 +489,7 @@ class MainViewModel @Inject constructor(
     private fun buildMotivationLine(tasks: List<Task>, analytics: AnalyticsSnapshot): String {
         return when {
             analytics.pendingBacklog == 0 -> "Inbox clear. Protect the momentum."
-            tasks.count { it.priority == TaskPriority.HIGH || it.priority == TaskPriority.CRITICAL } >= 3 ->
+            tasks.count { it.priority == TaskPriority.HIGH || it.priority == TaskPriority.URGENT } >= 3 ->
                 "High-pressure queue detected. Finish the top commitment first."
             else -> "${analytics.pendingBacklog} commitments still open. Keep moving."
         }
@@ -518,7 +511,7 @@ class MainViewModel @Inject constructor(
 
     private suspend fun recordLearning(
         notificationId: Long?,
-        taskId: Long?,
+        taskId: String?,
         type: LearningEventType,
         payload: String,
     ) {
