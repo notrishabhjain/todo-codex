@@ -10,7 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -123,10 +123,10 @@ fun TaskCard(task: Task, onClick: () -> Unit) {
                     Text("From: ${task.sender}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 
-                if (task.dueAt != null) {
+                task.dueAt?.let { dueAt ->
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Default.CalendarToday, contentDescription = "Due", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
-                        Text(DateFormat.getDateTimeInstance().format(Date(task.dueAt)), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
+                        Icon(Icons.Default.DateRange, contentDescription = "Due", modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.secondary)
+                        Text(DateFormat.getDateTimeInstance().format(Date(dueAt)), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
                     }
                 }
             }
@@ -199,7 +199,7 @@ fun TaskDetailScreen(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedButton(onClick = { onRaisePriority(task) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { Text("Raise Priority") }
             OutlinedButton(onClick = { onAddToCalendar(task) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp)) { 
-                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Calendar") 
             }
