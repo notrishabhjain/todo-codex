@@ -21,7 +21,8 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 
 private const val CHANNEL_ID = "reminder_channel"
 private const val FOREGROUND_ID = 42
@@ -45,7 +46,7 @@ class WorkManagerReminderScheduler @Inject constructor(
 }
 
 class ReminderForegroundService : Service() {
-    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var isStarted = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -68,8 +69,8 @@ class ReminderForegroundService : Service() {
                 .build()
             startForeground(FOREGROUND_ID, initialNotification)
             
-            scope.kotlinx.coroutines.launch {
-                taskRepository.observePendingTasks().kotlinx.coroutines.flow.collect { tasks ->
+            scope.launch {
+                taskRepository.observePendingTasks().collect { tasks ->
                     val urgentCount = tasks.count { it.priority == com.rishabh.todo.codex.domain.model.TaskPriority.URGENT }
                     val topTask = tasks.firstOrNull()
                     
@@ -103,7 +104,7 @@ class ReminderForegroundService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        kotlinx.coroutines.cancel(scope.coroutineContext)
+        scope.cancel()
     }
 
     companion object {
