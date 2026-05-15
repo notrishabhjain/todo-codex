@@ -8,7 +8,6 @@ import com.rishabh.todo.codex.domain.model.KeywordRule
 import com.rishabh.todo.codex.domain.model.LearningEvent
 import com.rishabh.todo.codex.domain.model.LearningEventType
 import com.rishabh.todo.codex.domain.model.NotificationRecord
-import com.rishabh.todo.codex.domain.model.SourceType
 import com.rishabh.todo.codex.domain.model.Task
 import com.rishabh.todo.codex.domain.model.TaskPriority
 import com.rishabh.todo.codex.domain.model.TaskStatus
