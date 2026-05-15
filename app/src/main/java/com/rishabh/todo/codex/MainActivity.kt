@@ -12,17 +12,21 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -165,16 +169,15 @@ private fun TaskManagerApp(
                                 viewModel.deleteTask(it)
                                 selectedTask = null
                             },
-                            onRaisePriority = {
-                                viewModel.raiseTaskPriority(it)
-                                selectedTask = it
+                            onRaisePriority = { task ->
+                                viewModel.raiseTaskPriority(task)
+                                // refresh selectedTask from state
+                                selectedTask = state.tasks.find { it.id == task.id } ?: task
                             },
                             onAddToCalendar = viewModel::addTaskToCalendar,
                             onSaveEdits = { task, text ->
                                 viewModel.saveTaskEdits(task, text)
-                                selectedTask = task.copy(
-                                    text = text,
-                                )
+                                selectedTask = task.copy(text = text)
                             },
                         )
                     }
@@ -269,41 +272,62 @@ private fun DashboardScreen(
     onImportJson: () -> Unit,
     onSendEmail: () -> Unit,
 ) {
-    LazyColumn(
+    androidx.compose.foundation.lazy.LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(horizontal = 16.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { MetricCard(title = "Pending Tasks", value = state.analytics.pendingBacklog.toString()) }
-        item { MetricCard(title = "Completed Today", value = state.analytics.completedToday.toString()) }
-        item { Text("Momentum: ${state.motivationLine}", style = MaterialTheme.typography.titleMedium) }
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("TaskMind Dashboard", style = MaterialTheme.typography.headlineSmall)
+                Text(state.motivationLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                MetricCard(title = "Pending", value = state.analytics.pendingBacklog.toString(), modifier = Modifier.weight(1f))
+                MetricCard(title = "Done Today", value = state.analytics.completedToday.toString(), modifier = Modifier.weight(1f))
+            }
+        }
         if (state.operationMessage.isNotBlank()) {
-            item { Text("Status: ${state.operationMessage}") }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onExportJson) { Text("Export JSON") }
-                Button(onClick = onExportCsv) { Text("Export CSV") }
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onImportJson) { Text("Import JSON") }
-                Button(onClick = onSendEmail) { Text("Draft Daily Email") }
-            }
-        }
-        items(state.tasks.take(5)) { task ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                 ) {
-                    Text(task.text)
-                    Text("Priority ${task.priority} | ${task.sender ?: task.sourceAppDisplay}")
+                    Text(
+                        state.operationMessage,
+                        modifier = Modifier.padding(12.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
                 }
             }
         }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = onExportJson, modifier = Modifier.weight(1f)) { Text("Export JSON") }
+                Button(onClick = onExportCsv, modifier = Modifier.weight(1f)) { Text("Export CSV") }
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onImportJson, modifier = Modifier.weight(1f)) { Text("Import JSON") }
+                OutlinedButton(onClick = onSendEmail, modifier = Modifier.weight(1f)) { Text("Daily Email") }
+            }
+        }
+        item { Text("Recent Tasks", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        androidx.compose.foundation.lazy.items(state.tasks.take(5)) { task ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(task.text, style = MaterialTheme.typography.bodyMedium)
+                    Text("${task.priority.name} · ${task.status.name} · ${task.sourceAppDisplay}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+        item { Spacer(modifier = Modifier.height(24.dp)) }
     }
 }
 
