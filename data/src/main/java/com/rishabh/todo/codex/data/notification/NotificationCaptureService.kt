@@ -50,28 +50,30 @@ class NotificationCaptureService : NotificationListenerService() {
             )
             val extraction = extractionEngine.extract(record)
             val contactTrust = sender?.let { contactPolicyRepository.getByName(it)?.trust } ?: ContactTrust.NORMAL
-            
-            val isVip = sourceAppDisplay == "WhatsApp" && contactTrust == ContactTrust.VIP
+
+            val isVip = contactTrust == ContactTrust.VIP
             val decision = when {
+                contactTrust == ContactTrust.IGNORE -> "IGNORE"
                 !extraction.actionable && !isVip -> "IGNORE"
                 sourceAppDisplay == "Calendar" -> "AUTO_CREATE"
                 isVip -> "AUTO_CREATE"
-                contactTrust == ContactTrust.IGNORE -> "IGNORE"
-                else -> extraction.decision.name
+                else -> extraction.decision.name // AUTO_CREATE or INBOX_REVIEW
             }
-            val notificationId = notificationRepository.save(record.copy(id = 0L))
-            notificationRepository.updateDecision(notificationId, decision)
-            if (decision == "AUTO_CREATE" || decision == "INBOX_REVIEW") {
+
+            if (decision == "IGNORE") return@launch
+
+            // Save with the resolved decision so the inbox query picks up INBOX_REVIEW items immediately
+            notificationRepository.save(record.copy(id = 0L), decision)
+
+            if (decision == "AUTO_CREATE") {
                 val task = createTask(record, extraction)
-                val finalTask = if (isVip) task.copy(priority = com.rishabh.todo.codex.domain.model.TaskPriority.URGENT, needsConfirmation = false) else task.copy(needsConfirmation = decision == "INBOX_REVIEW")
-                if (finalTask.needsConfirmation) {
-                    // It will remain in Inbox and not go to the main list yet, or it goes to main list marked needsConfirmation.
-                    // Let's just upsert it.
-                    taskRepository.upsert(finalTask)
-                } else {
-                    taskRepository.upsert(finalTask)
-                }
+                val finalTask = if (isVip)
+                    task.copy(priority = com.rishabh.todo.codex.domain.model.TaskPriority.URGENT, needsConfirmation = false)
+                else
+                    task.copy(needsConfirmation = false)
+                taskRepository.upsert(finalTask)
             }
+            // INBOX_REVIEW: stays in inbox only — task created when user approves via MainViewModel.approveNotification()
         }
     }
 

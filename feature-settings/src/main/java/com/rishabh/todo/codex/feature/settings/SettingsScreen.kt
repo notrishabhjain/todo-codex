@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +49,8 @@ fun SettingsScreen(
     var newCategory by remember { mutableStateOf("action") }
     var newLanguage by remember { mutableStateOf("en") }
     var exportPath by remember(settings.scheduledExportPath) { mutableStateOf(settings.scheduledExportPath ?: "") }
+    var newContactName by remember { mutableStateOf("") }
+    var newContactTrust by remember { mutableStateOf(ContactTrust.VIP) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -119,6 +122,32 @@ fun SettingsScreen(
             newPhrase = ""
         }) { Text("Add Rule") }
         Text("Contacts", style = MaterialTheme.typography.titleMedium)
+        // --- Add new contact ---
+        OutlinedTextField(
+            modifier = Modifier.fillMaxWidth(),
+            value = newContactName,
+            onValueChange = { newContactName = it },
+            label = { Text("Contact Name") },
+        )
+        Button(onClick = {
+            newContactTrust = when (newContactTrust) {
+                ContactTrust.VIP -> ContactTrust.HIGH_PRIORITY
+                ContactTrust.HIGH_PRIORITY -> ContactTrust.NORMAL
+                ContactTrust.NORMAL -> ContactTrust.VIP
+                ContactTrust.IGNORE -> ContactTrust.VIP
+            }
+        }) { Text("Trust Level: ${newContactTrust.name}") }
+        Button(
+            onClick = {
+                if (newContactName.isNotBlank()) {
+                    onSetContactTrust(
+                        ContactProfile(displayName = newContactName.trim(), trust = newContactTrust),
+                        newContactTrust,
+                    )
+                    newContactName = ""
+                }
+            }
+        ) { Text("Add Contact") }
         contacts.forEach { contact ->
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

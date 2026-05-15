@@ -45,7 +45,7 @@ class NotificationRepositoryImpl @Inject constructor(
     override fun observeInboxCandidates(): Flow<List<NotificationRecord>> =
         dao.observeInboxCandidates().map { rows -> rows.map { it.toDomain() } }
 
-    override suspend fun save(record: NotificationRecord): Long = dao.insert(record.toEntity())
+    override suspend fun save(record: NotificationRecord, decision: String): Long = dao.insert(record.toEntity(decision))
 
     override suspend fun updateDecision(notificationId: Long, decision: String) = dao.updateDecision(notificationId, decision)
 }

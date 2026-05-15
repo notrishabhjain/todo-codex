@@ -20,7 +20,7 @@ interface TaskRepository {
 
 interface NotificationRepository {
     fun observeInboxCandidates(): Flow<List<NotificationRecord>>
-    suspend fun save(record: NotificationRecord): Long
+    suspend fun save(record: NotificationRecord, decision: String = "NEW"): Long
     suspend fun updateDecision(notificationId: Long, decision: String)
 }
 
