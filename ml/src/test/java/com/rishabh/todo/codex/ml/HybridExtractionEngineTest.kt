@@ -1,7 +1,6 @@
 package com.rishabh.todo.codex.ml
 
 import com.rishabh.todo.codex.domain.model.NotificationRecord
-import com.rishabh.todo.codex.domain.model.SourceType
 import com.rishabh.todo.codex.domain.repository.ContactPolicyRepository
 import com.rishabh.todo.codex.domain.repository.KeywordRuleRepository
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +19,7 @@ class HybridExtractionEngineTest {
         val result = engine.extract(
             NotificationRecord(
                 packageName = "com.whatsapp",
-                sourceType = SourceType.WHATSAPP,
+                sourceAppDisplay = "WhatsApp",
                 sender = "Amit",
                 title = "Amit",
                 body = "Send the proposal kal",
