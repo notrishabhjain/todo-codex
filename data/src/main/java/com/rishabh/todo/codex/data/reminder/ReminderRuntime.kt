@@ -45,18 +45,65 @@ class WorkManagerReminderScheduler @Inject constructor(
 }
 
 class ReminderForegroundService : Service() {
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private var isStarted = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         ensureChannel(this)
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Anti-procrastination shield active")
-            .setContentText("Tracking pending tasks and keeping them visible.")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setOngoing(true)
-            .build()
-        startForeground(FOREGROUND_ID, notification)
+        if (!isStarted) {
+            isStarted = true
+            val entryPoint = EntryPointAccessors.fromApplication(
+                applicationContext,
+                TaskRepositoryEntryPoint::class.java,
+            )
+            val taskRepository = entryPoint.taskRepository()
+            
+            val initialNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("TaskMind Active")
+                .setContentText("Initializing...")
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setOngoing(true)
+                .build()
+            startForeground(FOREGROUND_ID, initialNotification)
+            
+            scope.kotlinx.coroutines.launch {
+                taskRepository.observePendingTasks().kotlinx.coroutines.flow.collect { tasks ->
+                    val urgentCount = tasks.count { it.priority == com.rishabh.todo.codex.domain.model.TaskPriority.URGENT }
+                    val topTask = tasks.firstOrNull()
+                    
+                    val title = if (tasks.isEmpty()) {
+                        "TaskMind Shield Active"
+                    } else {
+                        "${tasks.size} tasks pending — $urgentCount URGENT"
+                    }
+                    
+                    val text = if (topTask == null) {
+                        "All caught up! Monitoring incoming tasks."
+                    } else {
+                        "Top: ${topTask.text}"
+                    }
+                    
+                    val notification = NotificationCompat.Builder(this@ReminderForegroundService, CHANNEL_ID)
+                        .setContentTitle(title)
+                        .setContentText(text)
+                        .setSmallIcon(android.R.drawable.ic_dialog_info)
+                        .setOngoing(true)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .build()
+                    
+                    val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    manager.notify(FOREGROUND_ID, notification)
+                }
+            }
+        }
         return START_STICKY
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        kotlinx.coroutines.cancel(scope.coroutineContext)
     }
 
     companion object {
@@ -67,7 +114,10 @@ class ReminderForegroundService : Service() {
                     CHANNEL_ID,
                     "Task reminders",
                     NotificationManager.IMPORTANCE_HIGH,
-                ),
+                ).apply {
+                    setSound(null, null)
+                    enableVibration(false)
+                }
             )
         }
     }
@@ -88,8 +138,8 @@ class ReminderWorker(
         val top = tasks.firstOrNull()
         val content = when {
             top == null -> "No pending tasks right now."
-            tasks.size > 1 -> "${tasks.size} tasks pending. Top focus: ${top.title}"
-            else -> "${top.title} is still pending."
+            tasks.size > 1 -> "${tasks.size} tasks pending. Top focus: ${top.text}"
+            else -> "${top.text} is still pending."
         }
         NotificationManagerCompat.from(applicationContext).notify(
             99,
